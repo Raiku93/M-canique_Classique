@@ -32,7 +32,7 @@ class Sol:
 
 # Classe de base pour les objets physiques
 class ObjetPhysique:
-    def __init__(self, x, y, couleur):
+    def __init__(self, x, y, couleur, coefficient_restitution=1.0):
         self.x = x
         self.y = y
         self.couleur = couleur
@@ -40,6 +40,7 @@ class ObjetPhysique:
         self.vy = 0  # Vitesse en y
         self.ax = 0  # Accélération en x
         self.ay = 0  # Accélération en y
+        self.coefficient_restitution = coefficient_restitution # Coefficient de restitution
 
     def deplacer(self, dt):
         # Mise à jour de la vitesse en fonction de l'accélération
@@ -62,8 +63,8 @@ class ObjetPhysique:
 
 # Classe pour les cercles
 class Cercle(ObjetPhysique):
-    def __init__(self, x, y, rayon, couleur):
-        super().__init__(x, y, couleur)
+    def __init__(self, x, y, rayon, couleur, coefficient_restitution=0.8):
+        super().__init__(x, y, couleur, coefficient_restitution)
         self.rayon = rayon
 
     def dessiner(self, surface):
@@ -92,12 +93,16 @@ class Cercle(ObjetPhysique):
                 v1n = self.vx * nx + self.vy * ny
                 v2n = autre_objet.vx * nx + autre_objet.vy * ny
 
-                p = 2 * (v1n - v2n) / (1 + 1)  # Masse supposée égale à 1
+                # Calcul de la nouvelle vitesse le long de la normale en tenant compte du coefficient de restitution
+                e = min(self.coefficient_restitution, autre_objet.coefficient_restitution)
+                v1n_new = (e * autre_objet.masse * (v2n - v1n) + self.masse * v1n + autre_objet.masse * v2n) / (self.masse + autre_objet.masse)
+                v2n_new = (e * self.masse * (v1n - v2n) + self.masse * v1n + autre_objet.masse * v2n) / (self.masse + autre_objet.masse)
 
-                self.vx -= p * nx
-                self.vy -= p * ny
-                autre_objet.vx += p * nx
-                autre_objet.vy += p * ny
+                self.vx += (v1n_new - v1n) * nx
+                self.vy += (v1n_new - v1n) * ny
+                autre_objet.vx += (v2n_new - v2n) * nx
+                autre_objet.vy += (v2n_new - v2n) * ny
+
                 overlap = 0.5 * (self.rayon + autre_objet.rayon - distance_centre)
                 self.x -= overlap * nx
                 self.y -= overlap * ny
@@ -106,9 +111,10 @@ class Cercle(ObjetPhysique):
 
 # Classe pour les carrés
 class Carre(ObjetPhysique):
-    def __init__(self, x, y, taille, couleur):
-        super().__init__(x, y, couleur)
+    def __init__(self, x, y, taille, couleur, coefficient_restitution=0.7):
+        super().__init__(x, y, couleur, coefficient_restitution)
         self.taille = taille
+        self.masse = 1 # Masse par défaut pour les collisions
 
     def dessiner(self, surface):
         pygame.draw.rect(surface, self.couleur, (int(self.x), int(self.y), self.taille, self.taille))
@@ -130,8 +136,20 @@ class Carre(ObjetPhysique):
 
     def gestion_collision(self, autre_objet):
         if isinstance(autre_objet, Carre):
-            self.vx, autre_objet.vx = autre_objet.vx, self.vx
-            self.vy, autre_objet.vy = autre_objet.vy, self.vy
+            # Calcul des vitesses relatives
+            v1x = self.vx
+            v1y = self.vy
+            v2x = autre_objet.vx
+            v2y = autre_objet.vy
+
+            # Calcul des nouvelles vitesses après une collision élastique (simplifiée pour masses égales)
+            e = min(self.coefficient_restitution, autre_objet.coefficient_restitution)
+            self.vx = e * v2x
+            self.vy = e * v2y
+            autre_objet.vx = e * v1x
+            autre_objet.vy = e * v1y
+
+            # Ajustement de la position pour éviter le chevauchement (méthode simple)
             delta_x = (self.x + self.taille / 2) - (autre_objet.x + autre_objet.taille / 2)
             delta_y = (self.y + self.taille / 2) - (autre_objet.y + autre_objet.taille / 2)
             if abs(delta_x) > abs(delta_y):
@@ -147,10 +165,11 @@ class Carre(ObjetPhysique):
 
 # Classe pour les rectangles
 class Rectangle(ObjetPhysique):
-    def __init__(self, x, y, largeur, hauteur, couleur):
-        super().__init__(x, y, couleur)
+    def __init__(self, x, y, largeur, hauteur, couleur, coefficient_restitution=0.6):
+        super().__init__(x, y, couleur, coefficient_restitution)
         self.largeur = largeur
         self.hauteur = hauteur
+        self.masse = 1 # Masse par défaut pour les collisions
 
     def dessiner(self, surface):
         pygame.draw.rect(surface, self.couleur, (int(self.x), int(self.y), self.largeur, self.hauteur))
@@ -169,8 +188,18 @@ class Rectangle(ObjetPhysique):
 
     def gestion_collision(self, autre_objet):
         if isinstance(autre_objet, Rectangle):
-            self.vx, autre_objet.vx = autre_objet.vx, self.vx
-            self.vy, autre_objet.vy = autre_objet.vy, self.vy
+            # Similaire à la collision entre carrés (simplifié pour masses égales)
+            v1x = self.vx
+            v1y = self.vy
+            v2x = autre_objet.vx
+            v2y = autre_objet.vy
+
+            e = min(self.coefficient_restitution, autre_objet.coefficient_restitution)
+            self.vx = e * v2x
+            self.vy = e * v2y
+            autre_objet.vx = e * v1x
+            autre_objet.vy = e * v1y
+
             delta_x = (self.x + self.largeur / 2) - (autre_objet.x + autre_objet.largeur / 2)
             delta_y = (self.y + self.hauteur / 2) - (autre_objet.y + autre_objet.hauteur / 2)
             if abs(delta_x) > abs(delta_y):
@@ -185,29 +214,26 @@ class Rectangle(ObjetPhysique):
                     self.y = autre_objet.y - self.hauteur
 
 # Création du sol
-sol = Sol(hauteur - 50, 50, GRIS, 0.2) # Sol gris avec un coefficient de restitution de 0.8
+sol = Sol(hauteur - 50, 50, GRIS, 1) # Sol gris avec un coefficient de restitution de 0.8
 
 # Liste pour stocker les objets physiques
 objets = []
 
-# Création d'objets
-cercle1 = Cercle(100, 100, 30, NOIR)
+# Création d'objets avec différents coefficients de restitution
+cercle1 = Cercle(100, 100, 30, NOIR, 0.9)
 cercle1.vx = 50
 cercle1.vy = 0
-cercle1.ay = 40
+cercle1.ay = 90
+cercle1.masse = 1 # Ajout de la masse
 objets.append(cercle1)
 
-cercle2 = Cercle(50, 100, 30, NOIR)
-cercle2.vx = -100
+cercle2 = Cercle(50, 100, 30, NOIR, 0.9)
+cercle2.vx = -1000
 cercle2.vy = 0
-cercle2.ay = 40
+cercle2.ay = 90
+cercle2.masse = 1 # Ajout de la masse
 objets.append(cercle2)
 
-cercle3 = Cercle(50, 150, 30, NOIR)
-cercle3.vx = -100
-cercle3.vy = 1
-cercle3.ay = 40
-objets.append(cercle3)
 
 # Boucle principale du jeu
 en_cours = True
@@ -230,43 +256,47 @@ while en_cours:
         objet.deplacer(dt)
         objet.dessiner(ecran)
 
-        # Gestion des collisions avec les bords gauche et droit
+        # Gestion des collisions avec les bords gauche et droit (avec perte d'énergie)
         if isinstance(objet, (Cercle, Carre, Rectangle)):
             if isinstance(objet, Cercle):
                 if objet.x + objet.rayon > largeur or objet.x - objet.rayon < 0:
-                    objet.vx *= -1
+                    objet.vx *= -objet.coefficient_restitution
             elif isinstance(objet, Carre):
                 if objet.x + objet.taille > largeur or objet.x < 0:
-                    objet.vx *= -1
+                    objet.vx *= -objet.coefficient_restitution
             elif isinstance(objet, Rectangle):
                 if objet.x + objet.largeur > largeur or objet.x < 0:
-                    objet.vx *= -1
+                    objet.vx *= -objet.coefficient_restitution
 
-            # Gestion de la collision avec le sol
+            # Gestion de la collision avec le sol (avec perte d'énergie)
             if isinstance(objet, Cercle):
                 if objet.y + objet.rayon > sol.y:
                     objet.y = sol.y - objet.rayon
                     objet.vy *= -sol.coefficient_restitution
-                    objet.ay = 0 # Supprimer l'accélération verticale après le rebond
             elif isinstance(objet, Carre):
                 if objet.y + objet.taille > sol.y:
                     objet.y = sol.y - objet.taille
                     objet.vy *= -sol.coefficient_restitution
-                    objet.ay = 0
             elif isinstance(objet, Rectangle):
                 if objet.y + objet.hauteur > sol.y:
                     objet.y = sol.y - objet.hauteur
                     objet.vy *= -sol.coefficient_restitution
-                    objet.ay = 0
             else:
                 # Si l'objet n'est pas en contact avec le sol, réappliquer la gravité
-                objet.ay = 40
+                objet.ay = objet.ay
 
     # Vérifier les collisions entre les objets
     for i in range(len(objets)):
         for j in range(i + 1, len(objets)):
             if objets[i].collision(objets[j]):
-                objets[i].gestion_collision(objets[j])
+                # On passe les coefficients de restitution aux méthodes de gestion de collision
+                if isinstance(objets[i], Cercle) and isinstance(objets[j], Cercle):
+                    objets[i].gestion_collision(objets[j])
+                elif isinstance(objets[i], Carre) and isinstance(objets[j], Carre):
+                    objets[i].gestion_collision(objets[j])
+                elif isinstance(objets[i], Rectangle) and isinstance(objets[j], Rectangle):
+                    objets[i].gestion_collision(objets[j])
+                # Tu peux ajouter d'autres conditions pour les collisions entre différents types d'objets
 
     # Mettre à jour l'affichage
     pygame.display.flip()
