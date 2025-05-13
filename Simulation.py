@@ -214,24 +214,24 @@ class Rectangle(ObjetPhysique):
                     self.y = autre_objet.y - self.hauteur
 
 # Création du sol
-sol = Sol(hauteur - 50, 50, GRIS, 1) # Sol gris avec un coefficient de restitution de 0.8
+sol = Sol(hauteur - 50, 50, GRIS, 0.5) # Sol gris avec un coefficient de restitution de 0.8
 
 # Liste pour stocker les objets physiques
 objets = []
 
 # Création d'objets avec différents coefficients de restitution
-cercle1 = Cercle(100, 100, 30, NOIR, 0.9)
-cercle1.vx = 50
+cercle1 = Cercle(150, 100, 30, NOIR, 0.9)
+cercle1.vx = 5
 cercle1.vy = 0
 cercle1.ay = 90
 cercle1.masse = 1 # Ajout de la masse
 objets.append(cercle1)
 
 cercle2 = Cercle(50, 100, 30, NOIR, 0.9)
-cercle2.vx = -1000
+cercle2.vx = 70
 cercle2.vy = 0
 cercle2.ay = 90
-cercle2.masse = 1 # Ajout de la masse
+cercle2.masse = 10 # Ajout de la masse
 objets.append(cercle2)
 
 
